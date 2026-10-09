@@ -41,6 +41,15 @@ function applyChange(
       return applyRestoreDeleted(tr, change, newState);
     case "insertion":
       return applyInsertion(tr, change, newState, author, date);
+    case "inline-format": {
+      const markType = newState.schema.marks.inlineFormatChange;
+      return markType ? tr.addMark(tr.mapping.map(change.from), tr.mapping.map(change.to),
+        markType.create({ id: change.id, author, date, oldFont: change.oldFont ?? null })) : tr;
+    }
+    case "clear-inline-format": {
+      const markType = newState.schema.marks.inlineFormatChange;
+      return markType ? tr.removeMark(tr.mapping.map(change.from), tr.mapping.map(change.to), markType) : tr;
+    }
     default:
       return tr;
   }

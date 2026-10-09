@@ -68,6 +68,8 @@ export function useChangeNavigation({
       } else if (change.type === "formatChange") {
         // Format changes are on paragraph/heading elements with data-format-change attribute
         selector = `.has-format-change`;
+      } else if (change.type === "inlineFormatChange") {
+        selector = `span[data-inline-format-change-id="${change.id}"]`;
       } else {
         return;
       }
@@ -213,7 +215,8 @@ export function useChangeNavigation({
         node.marks.forEach((mark) => {
           if (
             mark.type.name === "insertion" ||
-            mark.type.name === "deletion"
+            mark.type.name === "deletion" ||
+            mark.type.name === "inlineFormatChange"
           ) {
             const markFrom = pos;
             const markTo = pos + node.nodeSize;
@@ -224,12 +227,19 @@ export function useChangeNavigation({
               if (!existing) {
                 changesInSelection.push({
                   id: mark.attrs.id,
-                  type: mark.type.name as "insertion" | "deletion",
+                  type: mark.type.name as "insertion" | "deletion" | "inlineFormatChange",
                   author: mark.attrs.author,
                   date: mark.attrs.date,
                   text: node.text || "",
                   from: markFrom,
                   to: markTo,
+                  ...(mark.type.name === "inlineFormatChange" ? {
+                    oldFont: mark.attrs.oldFont ?? null,
+                    newFont: (() => {
+                      const attrs = node.marks.find((item) => item.type.name === "fontStyle")?.attrs;
+                      return attrs ? { family: attrs.family ?? null, size: attrs.size ?? null } : null;
+                    })(),
+                  } : {}),
                 });
               }
             }

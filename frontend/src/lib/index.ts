@@ -101,6 +101,7 @@ export type {
 // Re-export extensions for custom editor setups
 export { Insertion } from "../extensions/Insertion";
 export { Deletion } from "../extensions/Deletion";
+export { InlineFormatChange } from "../extensions/InlineFormatChange";
 export { Comment } from "../extensions/Comment";
 export { RawStyle } from "../extensions/RawStyle";
 export { TrackChangesMode } from "../extensions/TrackChangesMode";
@@ -108,6 +109,7 @@ export { Section } from "../extensions/Section";
 export { TableWithId } from "../extensions/TableWithId";
 export { ParagraphWithId } from "../extensions/ParagraphWithId";
 export { HeadingWithStyle } from "../extensions/HeadingWithStyle";
+export { FigureWithId } from "../extensions/FigureWithId";
 export { HardBreakWithType } from "../extensions/HardBreakWithType";
 export { Tab } from "../extensions/Tab";
 export { PersistentSelection } from "../extensions/PersistentSelection";

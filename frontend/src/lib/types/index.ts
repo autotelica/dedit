@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/react";
-import type { Extension } from "@tiptap/core";
+import type { Extension, AnyExtension } from "@tiptap/core";
 
 /**
  * TipTap document JSON structure
@@ -38,7 +38,7 @@ export interface CommentData {
  */
 export interface TrackedChange {
   id: string;
-  type: "insertion" | "deletion" | "formatChange";
+  type: "insertion" | "deletion" | "formatChange" | "inlineFormatChange";
   author: string | null;
   date: string | null;
   text: string;
@@ -52,6 +52,9 @@ export interface TrackedChange {
   newStyle?: string | null;
   /** For formatChange: the current numbering level */
   newNumIlvl?: number | null;
+  /** For inlineFormatChange: font before and after the pending change. */
+  oldFont?: { family: string | null; size: string | null } | null;
+  newFont?: { family: string | null; size: string | null } | null;
 }
 
 /**
@@ -329,7 +332,7 @@ export interface DocumentEditorProps {
   /** Additional TipTap extensions to include */
   extensions?: Extension[];
   /** Override default extensions entirely */
-  replaceExtensions?: Extension[];
+  replaceExtensions?: AnyExtension[];
   /** Configure built-in extensions */
   extensionConfig?: ExtensionConfig;
   /** Toolbar items to display (e.g., ["bold", "italic"]) */
@@ -355,7 +358,7 @@ export interface UseDocumentEditorOptions {
   /** Additional extensions */
   extensions?: Extension[];
   /** Replace default extensions */
-  replaceExtensions?: Extension[];
+  replaceExtensions?: AnyExtension[];
   /** Extension configuration */
   extensionConfig?: ExtensionConfig;
   /** Track changes enabled by default */

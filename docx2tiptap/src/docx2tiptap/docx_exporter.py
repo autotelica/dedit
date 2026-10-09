@@ -21,6 +21,7 @@ from docx import Document
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.text.run import Run
+from docx.shared import Inches
 
 from .utils import base64_to_element
 
@@ -38,6 +39,7 @@ class DocxExporter:
         self,
         comments: Optional[list[dict]] = None,
         template_bytes: Optional[bytes] = None,
+        assets: Optional[dict[str, bytes]] = None,
     ):
         """
         Initialize the exporter.
@@ -50,6 +52,7 @@ class DocxExporter:
         """
         self._comments_dict = {c["id"]: c for c in (comments or [])}
         self._template_bytes = template_bytes
+        self._assets = assets or {}
         self._revision_id_counter = 0
         self._comment_runs_map: dict[str, list] = {}
         self._doc: Optional[Document] = None
@@ -347,6 +350,25 @@ class DocxExporter:
             self._process_table(node, table_cell)
         elif node_type == "section":
             self._process_section(node)
+        elif node_type == "figure":
+            self._process_figure(node, table_cell)
+
+    def _process_figure(self, node: dict, table_cell=None) -> None:
+        attrs = node.get("attrs") or {}
+        asset_id = attrs.get("assetId")
+        if not isinstance(asset_id, str) or asset_id not in self._assets:
+            raise ValueError("Figure asset is missing")
+        paragraph = table_cell.add_paragraph() if table_cell is not None else self._doc.add_paragraph()
+        width = attrs.get("width")
+        image_width = Inches(min(width, 624) / 96) if isinstance(width, int) and width > 0 else None
+        picture = paragraph.add_run().add_picture(BytesIO(self._assets[asset_id]), width=image_width)
+        picture._inline.docPr.set("descr", str(attrs.get("alt") or ""))
+        caption = attrs.get("caption")
+        if caption:
+            caption_paragraph = table_cell.add_paragraph() if table_cell is not None else self._doc.add_paragraph()
+            if "Caption" in self._doc.styles:
+                caption_paragraph.style = "Caption"
+            caption_paragraph.add_run(str(caption))
 
     def _process_paragraph(self, node: dict, table_cell=None) -> None:
         """Process a paragraph node."""
@@ -1366,6 +1388,7 @@ def create_docx_from_tiptap(
     tiptap_json: dict,
     comments: Optional[list[dict]] = None,
     template_bytes: Optional[bytes] = None,
+    assets: Optional[dict[str, bytes]] = None,
 ) -> BytesIO:
     """
     Convert TipTap JSON document to a Word document.
@@ -1387,5 +1410,5 @@ def create_docx_from_tiptap(
     Returns:
         BytesIO buffer containing the .docx file
     """
-    exporter = DocxExporter(comments=comments, template_bytes=template_bytes)
+    exporter = DocxExporter(comments=comments, template_bytes=template_bytes, assets=assets)
     return exporter.export(tiptap_json)

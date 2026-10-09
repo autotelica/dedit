@@ -16,6 +16,7 @@ import { HardBreakWithType } from "../../extensions/HardBreakWithType";
 import { PersistentSelection } from "../../extensions/PersistentSelection";
 import { Insertion } from "../../extensions/Insertion";
 import { Deletion } from "../../extensions/Deletion";
+import { InlineFormatChange } from "../../extensions/InlineFormatChange";
 import { Comment } from "../../extensions/Comment";
 import { RawStyle } from "../../extensions/RawStyle";
 import { TrackChangesMode } from "../../extensions/TrackChangesMode";
@@ -23,6 +24,7 @@ import { SearchAndReplace } from "../../extensions/SearchAndReplace";
 import { RawStylesStorage } from "../../extensions/RawStylesStorage";
 import { StyleNumbering } from "../../extensions/StyleNumbering";
 import { Tab } from "../../extensions/Tab";
+import { FigureWithId } from "../../extensions/FigureWithId";
 
 export interface DeditExtensionOptions {
   /** Omit History; Yjs owns undo when collaborating. */
@@ -53,6 +55,7 @@ export function createDeditExtensions(
     ParagraphWithId,
     Text,
     HeadingWithStyle.configure({ levels: headingLevels }),
+    FigureWithId,
     Bold,
     Italic,
     HardBreakWithType,
@@ -64,6 +67,7 @@ export function createDeditExtensions(
     TableHeader,
     Insertion,
     Deletion,
+    InlineFormatChange,
     Comment,
     RawStyle,
     TrackChangesMode.configure({

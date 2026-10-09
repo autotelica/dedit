@@ -11,9 +11,12 @@ Handles:
 """
 
 from io import BytesIO
+from copy import deepcopy
+import hashlib
 from typing import Optional
 
 from docx import Document
+from docx.text.paragraph import Paragraph as WordParagraph
 from docx.oxml.ns import qn
 
 from .comments_parser import (
@@ -25,6 +28,7 @@ from .models import (
     CellBorders,
     CellStyle,
     Paragraph,
+    Figure,
     ParagraphFormatChange,
     Table,
     TableCell,
@@ -339,7 +343,7 @@ def _parse_table_style(table) -> Optional[TableStyle]:
 
 
 def parse_table(
-    table, numbering_tracker: Optional[NumberingTracker] = None
+    table, numbering_tracker: Optional[NumberingTracker] = None, media: Optional[dict] = None
 ) -> Table:
     """Parse a python-docx table into our intermediate format.
 
@@ -425,14 +429,18 @@ def parse_table(
 
             # Parse cell content - cells can contain paragraphs and nested tables
             for para in cell.paragraphs:
-                parsed_para = parse_paragraph(para, numbering_tracker)
-                if parsed_para.runs:  # Only add non-empty paragraphs
-                    parsed_cell.content.append(parsed_para)
+                if media is None:
+                    parsed_para = parse_paragraph(para, numbering_tracker)
+                    if parsed_para.runs:
+                        parsed_cell.content.append(parsed_para)
+                else:
+                    parsed_cell.content.extend(element for element in parse_paragraph_with_media(para, numbering_tracker, 0, media)
+                                               if not isinstance(element, Paragraph) or element.runs)
 
             # Check for nested tables
             for nested_table in cell.tables:
                 parsed_cell.content.append(
-                    parse_table(nested_table, numbering_tracker)
+                    parse_table(nested_table, numbering_tracker, media)
                 )
 
             # Ensure cell has at least one paragraph (empty cell)
@@ -516,7 +524,46 @@ def extract_style_numbering_map(doc) -> dict:
     return {"style_to_num": style_to_num, "num_to_style": num_to_style}
 
 
-def parse_docx(file_content: bytes) -> tuple[list, dict, dict]:
+def parse_paragraph_with_media(p, numbering_tracker, para_index: int, media: dict) -> list:
+    children = [child for child in p._element if child.tag != qn("w:pPr")]
+    if not any(child.findall(".//{http://schemas.openxmlformats.org/drawingml/2006/main}blip") for child in children):
+        return [parse_paragraph(p, numbering_tracker, para_index)]
+    elements = []
+    segment = []
+    def flush_segment():
+        if not segment:
+            return
+        xml = deepcopy(p._element)
+        for child in list(xml):
+            if child.tag != qn("w:pPr"):
+                xml.remove(child)
+        for child in segment:
+            xml.append(deepcopy(child))
+        elements.append(parse_paragraph(WordParagraph(xml, p._parent), numbering_tracker, para_index))
+        segment.clear()
+    for child in children:
+        blips = child.findall(".//{http://schemas.openxmlformats.org/drawingml/2006/main}blip")
+        if not blips:
+            segment.append(child)
+            continue
+        if len(blips) != 1 or child.findall(".//" + qn("w:t")):
+            raise ValueError("Image mixed with text in one Word run is unsupported")
+        flush_segment()
+        relationship_id = blips[0].get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
+        if not relationship_id or relationship_id not in p.part.related_parts:
+            raise ValueError("Linked or missing Word image is unsupported")
+        image = p.part.related_parts[relationship_id]
+        asset_id = hashlib.sha256(image.blob).hexdigest()
+        media[asset_id] = {"bytes": image.blob, "mime": image.content_type}
+        properties = child.find(".//{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}docPr")
+        extent = child.find(".//{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}extent")
+        width = round(int(extent.get("cx")) / 914400 * 96) if extent is not None and extent.get("cx") else None
+        elements.append(Figure(asset_id, properties.get("descr", "") if properties is not None else "", width=width))
+    flush_segment()
+    return elements
+
+
+def parse_docx_with_media(file_content: bytes) -> tuple[list, dict, dict, dict]:
     """
     Parse a DOCX file and return a list of document elements, comments, and style map.
 
@@ -536,6 +583,7 @@ def parse_docx(file_content: bytes) -> tuple[list, dict, dict]:
     style_numbering_map = extract_style_numbering_map(doc)
 
     elements = []
+    media = {}
     para_index = 0
 
     # Build lookup maps for paragraphs and tables by their XML element
@@ -548,13 +596,23 @@ def parse_docx(file_content: bytes) -> tuple[list, dict, dict]:
             # It's a paragraph
             if element in para_map:
                 p = para_map[element]
-                parsed = parse_paragraph(p, numbering_tracker, para_index)
-                elements.append(parsed)
+                parsed = parse_paragraph_with_media(p, numbering_tracker, para_index, media)
+                if len(parsed) == 1 and isinstance(parsed[0], Paragraph) and parsed[0].style == "Caption" and elements and isinstance(elements[-1], Figure):
+                    elements[-1].caption = "".join(run.text for run in parsed[0].runs)
+                else:
+                    elements.extend(parsed)
                 para_index += 1
         elif element.tag == qn("w:tbl"):
             # It's a table
             if element in table_map:
                 t = table_map[element]
-                elements.append(parse_table(t, numbering_tracker))
+                elements.append(parse_table(t, numbering_tracker, media))
 
-    return elements, comments, style_numbering_map
+    return elements, comments, style_numbering_map, media
+
+
+def parse_docx(file_content: bytes) -> tuple[list, dict, dict]:
+    elements, comments, styles, media = parse_docx_with_media(file_content)
+    if media:
+        raise ValueError("This DOCX contains images; use parse_docx_with_media to retain them")
+    return elements, comments, styles

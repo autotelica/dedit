@@ -11,7 +11,7 @@ import json
 import uuid
 from typing import Optional
 
-from .models import Comment, Paragraph, Section, Table, TextRun
+from .models import Comment, Figure, Paragraph, Section, Table, TextRun
 
 
 class TipTapConverter:
@@ -52,6 +52,8 @@ class TipTapConverter:
         for elem in elements:
             if isinstance(elem, Paragraph):
                 content.append(self._paragraph_to_node(elem))
+            elif isinstance(elem, Figure):
+                content.append(self._figure_to_node(elem))
             elif isinstance(elem, Table):
                 content.append(self._table_to_node(elem))
             elif isinstance(elem, Section):
@@ -277,6 +279,12 @@ class TipTapConverter:
 
         return {"type": "table", "attrs": table_attrs, "content": rows}
 
+    def _figure_to_node(self, elem: Figure) -> dict:
+        return {"type": "figure", "attrs": {
+            "id": str(uuid.uuid4()), "assetId": elem.asset_id,
+            "alt": elem.alt, "caption": elem.caption, "width": elem.width,
+        }}
+
     def _convert_cell_content(self, content: list) -> list[dict]:
         """Convert cell content (list of Paragraph/Table) to TipTap nodes."""
         result = []
@@ -287,6 +295,8 @@ class TipTapConverter:
                 # Nested tables - recursively convert to TipTap table nodes
                 # TipTap's tableCell schema allows 'block+' content which includes tables
                 result.append(self._table_to_node(elem))
+            elif isinstance(elem, Figure):
+                result.append(self._figure_to_node(elem))
         return result
 
     def _section_to_node(self, section: Section) -> dict:

@@ -128,6 +128,14 @@ class Paragraph:
 
 
 @dataclass
+class Figure:
+    asset_id: str
+    alt: str = ""
+    caption: str = ""
+    width: Optional[int] = None
+
+
+@dataclass
 class BorderStyle:
     """Border styling for a single edge."""
 

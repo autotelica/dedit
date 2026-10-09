@@ -148,7 +148,7 @@ export function useTrackChanges(
       // Check for insertion/deletion marks on text nodes
       if (node.isText) {
         node.marks.forEach((mark) => {
-          if (mark.type.name === "insertion" || mark.type.name === "deletion") {
+          if (mark.type.name === "insertion" || mark.type.name === "deletion" || mark.type.name === "inlineFormatChange") {
             const id = mark.attrs.id;
             const existing = changeMap.get(id);
             if (existing) {
@@ -159,12 +159,19 @@ export function useTrackChanges(
             } else {
               changeMap.set(id, {
                 id,
-                type: mark.type.name as "insertion" | "deletion",
+                type: mark.type.name as "insertion" | "deletion" | "inlineFormatChange",
                 author: mark.attrs.author,
                 date: mark.attrs.date,
                 text: node.text || "",
                 from: pos,
                 to: pos + node.nodeSize,
+                ...(mark.type.name === "inlineFormatChange" ? {
+                  oldFont: mark.attrs.oldFont ?? null,
+                  newFont: (() => {
+                    const attrs = node.marks.find((item) => item.type.name === "fontStyle")?.attrs;
+                    return attrs ? { family: attrs.family ?? null, size: attrs.size ?? null } : null;
+                  })(),
+                } : {}),
               });
             }
           }
@@ -196,6 +203,8 @@ export function useTrackChanges(
         editor.commands.acceptDeletion(changeId);
       } else if (change.type === "formatChange") {
         editor.commands.acceptFormatChange(changeId);
+      } else if (change.type === "inlineFormatChange") {
+        editor.commands.acceptInlineFormatChange(changeId);
       }
 
       onAccept?.(change);
@@ -216,6 +225,8 @@ export function useTrackChanges(
         editor.commands.rejectDeletion(changeId);
       } else if (change.type === "formatChange") {
         editor.commands.rejectFormatChange(changeId);
+      } else if (change.type === "inlineFormatChange") {
+        editor.commands.rejectInlineFormatChange(changeId);
       }
 
       onReject?.(change);
@@ -236,6 +247,8 @@ export function useTrackChanges(
         editor.commands.acceptDeletion(change.id);
       } else if (change.type === "formatChange") {
         editor.commands.acceptFormatChange(change.id);
+      } else if (change.type === "inlineFormatChange") {
+        editor.commands.acceptInlineFormatChange(change.id);
       }
       onAccept?.(change);
     });
@@ -254,6 +267,8 @@ export function useTrackChanges(
         editor.commands.rejectDeletion(change.id);
       } else if (change.type === "formatChange") {
         editor.commands.rejectFormatChange(change.id);
+      } else if (change.type === "inlineFormatChange") {
+        editor.commands.rejectInlineFormatChange(change.id);
       }
       onReject?.(change);
     });

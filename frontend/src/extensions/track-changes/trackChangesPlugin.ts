@@ -26,6 +26,13 @@ export function createTrackChangesPlugin(
         return null;
       }
 
+      // Yjs emits document replacements for undo, redo, and remote updates.
+      // Those are already tracked (or originate elsewhere); interpreting their
+      // ReplaceSteps as fresh edits can mark whole paragraphs as deleted.
+      if (transactions.some(isChangeOrigin)) {
+        return null;
+      }
+
       // Guard: Skip transactions from track changes itself (prevent infinite loop)
       if (transactions.some((tr) => tr.getMeta("trackChangesProcessed"))) {
         return null;
@@ -47,9 +54,6 @@ export function createTrackChangesPlugin(
       ) {
         return null;
       }
-
-      // Remote updates and Yjs undo already contain the originating revisions.
-      if (transactions.some(isChangeOrigin)) return null;
 
       const author = getStorage().author;
 

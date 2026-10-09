@@ -1,14 +1,16 @@
 import type { Transaction, EditorState } from "@tiptap/pm/state";
-import { ReplaceStep, Mapping } from "@tiptap/pm/transform";
+import { AddMarkStep, RemoveMarkStep, ReplaceStep, Mapping } from "@tiptap/pm/transform";
 import type { PendingChange, DeletedFragment } from "./types";
+import type { FontAttributes } from "../InlineFormatChange";
+import { generateChangeId } from "./utils";
 
 /**
  * Collect all pending changes from a set of transactions.
  */
 export function collectChangesFromTransactions(
   transactions: readonly Transaction[],
-  _oldState: EditorState,
-  _newState: EditorState,
+  oldState: EditorState,
+  newState: EditorState,
   author: string,
 ): PendingChange[] {
   const pendingChanges: PendingChange[] = [];
@@ -19,6 +21,8 @@ export function collectChangesFromTransactions(
       transaction,
       author,
       pendingChanges,
+      oldState,
+      newState,
     );
   }
 
@@ -32,11 +36,16 @@ function collectChangesFromTransaction(
   transaction: Transaction,
   author: string,
   pendingChanges: PendingChange[],
+  oldState: EditorState,
+  newState: EditorState,
 ): void {
   let stepIndex = 0;
+  const fontRanges: Array<{ from: number; to: number }> = [];
+  let replacedText = false;
 
   for (const step of transaction.steps) {
     if (step instanceof ReplaceStep) {
+      replacedText = true;
       const replaceStep = step as ReplaceStep;
       const { from, to } = replaceStep;
       const slice = replaceStep.slice;
@@ -76,8 +85,58 @@ function collectChangesFromTransaction(
           pendingChanges.push({ type: "insertion", from: mappedStart, to: mappedEnd, text: node.text });
         }
       });
+    } else if ((step instanceof AddMarkStep || step instanceof RemoveMarkStep) && step.mark.type.name === "fontStyle") {
+      fontRanges.push({ from: step.from, to: step.to });
     }
     stepIndex++;
+  }
+
+  if (!replacedText && fontRanges.length) {
+    collectFontChanges(oldState, newState, fontRanges, pendingChanges);
+  }
+}
+
+function fontOf(marks: readonly import("@tiptap/pm/model").Mark[]): FontAttributes | null {
+  const attrs = marks.find((mark) => mark.type.name === "fontStyle")?.attrs;
+  if (!attrs?.family && !attrs?.size) return null;
+  return { family: attrs.family ?? null, size: attrs.size ?? null };
+}
+
+function sameFont(a: FontAttributes | null, b: FontAttributes | null): boolean {
+  return (a?.family ?? null) === (b?.family ?? null) && (a?.size ?? null) === (b?.size ?? null);
+}
+
+function collectFontChanges(
+  oldState: EditorState,
+  newState: EditorState,
+  ranges: Array<{ from: number; to: number }>,
+  pendingChanges: PendingChange[],
+): void {
+  const seen = new Set<string>();
+  const newId = generateChangeId("fmt");
+  for (const range of ranges) {
+    oldState.doc.nodesBetween(range.from, range.to, (oldNode, oldPos) => {
+      if (!oldNode.isText) return;
+      const from = Math.max(range.from, oldPos);
+      const to = Math.min(range.to, oldPos + oldNode.nodeSize);
+      newState.doc.nodesBetween(from, to, (newNode, newPos) => {
+        if (!newNode.isText) return;
+        const segmentFrom = Math.max(from, newPos);
+        const segmentTo = Math.min(to, newPos + newNode.nodeSize);
+        const key = `${segmentFrom}:${segmentTo}`;
+        if (segmentFrom >= segmentTo || seen.has(key)) return;
+        seen.add(key);
+        const previous = oldNode.marks.find((mark) => mark.type.name === "inlineFormatChange");
+        const oldFont = previous ? previous.attrs.oldFont as FontAttributes | null : fontOf(oldNode.marks);
+        const newFont = fontOf(newNode.marks);
+        if (sameFont(oldFont, newFont)) {
+          if (previous) pendingChanges.push({ type: "clear-inline-format", from: segmentFrom, to: segmentTo, text: "" });
+        } else {
+          pendingChanges.push({ type: "inline-format", from: segmentFrom, to: segmentTo, text: "",
+            oldFont, id: previous?.attrs.id ?? newId });
+        }
+      });
+    });
   }
 }
 

@@ -1,16 +1,16 @@
 {
   "name": "dedit-react-editor",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "A flexible, unstyled React document editor with track changes and comments support",
   "author": "Legalise.io",
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "https://github.com/legalise-io/dedit"
+    "url": "https://github.com/autotelica/dedit"
   },
-  "homepage": "https://github.com/legalise-io/dedit#readme",
+  "homepage": "https://github.com/autotelica/dedit#readme",
   "bugs": {
-    "url": "https://github.com/legalise-io/dedit/issues"
+    "url": "https://github.com/autotelica/dedit/issues"
   },
   "keywords": [
     "react",

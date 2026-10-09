@@ -6,8 +6,10 @@ import { createDeditExtensions } from "./createDeditExtensions";
 describe("createDeditExtensions", () => {
   test("factory builds schema in Node without DOM", () => {
     const schema = getSchema(createDeditExtensions({ collaboration: true }));
-    for (const n of ["paragraph", "heading", "table", "rawStylesStorage", "section"])
+    for (const n of ["paragraph", "heading", "table", "figure", "rawStylesStorage", "section"])
       expect(schema.nodes[n]).toBeDefined();
+    const figure = schema.node("figure", { id: "f1", assetId: "a1", alt: "Flow", caption: "A flow", width: 640 });
+    expect(figure.toJSON()).toEqual({ type: "figure", attrs: { id: "f1", assetId: "a1", alt: "Flow", caption: "A flow", width: 640 } });
     for (const m of ["insertion", "deletion", "comment"])
       expect(schema.marks[m]).toBeDefined();
   });

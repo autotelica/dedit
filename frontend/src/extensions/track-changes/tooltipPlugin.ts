@@ -32,7 +32,7 @@ export function createTooltipPlugin(): Plugin {
       const handleMouseOver = (event: MouseEvent) => {
         const target = event.target as HTMLElement;
         const trackChange = target.closest(
-          ".insertion, .deletion",
+          ".insertion, .deletion, .inline-format-change",
         ) as HTMLElement;
 
         if (trackChange) {
@@ -49,7 +49,7 @@ export function createTooltipPlugin(): Plugin {
 
       const handleMouseOut = (event: MouseEvent) => {
         const target = event.target as HTMLElement;
-        const trackChange = target.closest(".insertion, .deletion");
+        const trackChange = target.closest(".insertion, .deletion, .inline-format-change");
 
         if (trackChange) {
           hideTimeout = setTimeout(hideTooltip, 100);
