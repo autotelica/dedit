@@ -584,4 +584,4 @@ Your backend should accept this JSON and return a Word document blob.
 
 ## License
 
-MIT
+Copyright (C) 2025-2026 autotelica OÜ. Licensed under the [GNU Affero General Public License v3.0 only](LICENSE) (AGPL-3.0-only). See [NOTICE](NOTICE).

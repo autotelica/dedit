@@ -681,7 +681,7 @@ Table.configure({
 
 ## License
 
-AGPL-3.0-or-later
+Copyright (C) 2025-2026 autotelica OÜ. Licensed under AGPL-3.0-or-later; see [LICENSE](LICENSE).
 
 ## Contributing
 

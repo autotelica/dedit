@@ -1,6 +1,7 @@
 [project]
 name = "dedit-backend"
 version = "0.1.0"
+license = "AGPL-3.0-only"
 description = "Document editor backend - DOCX to Tiptap converter"
 requires-python = ">=3.11"
 dependencies = [

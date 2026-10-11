@@ -2860,4 +2860,4 @@ AI components use these CSS classes for styling:
 
 ## License
 
-AGPL-3.0-only - see LICENSE file for details.
+Copyright (C) 2025-2026 autotelica OÜ. AGPL-3.0-only - see the LICENSE file for details.
