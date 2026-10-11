@@ -1,0 +1,15 @@
+dedit
+Copyright (C) 2025-2026 autotelica OÜ
+
+dedit is free software: you can redistribute it and/or modify it under the
+terms of the GNU Affero General Public License, version 3, as published by the
+Free Software Foundation. The docx2tiptap package in docx2tiptap/ may also be
+used under any later version of that licence.
+
+dedit is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+Third-party code:
+- frontend/src/extensions/SearchAndReplace.ts is derived from code by Jeet
+  Mandaliya, Copyright (c) 2023-2024, licensed under the MIT License.
